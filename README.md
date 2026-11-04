@@ -47,15 +47,29 @@ System.NullReferenceException: Object reference not set to an instance of an obj
 
 ## Controls
 
-Each of these alone makes the response complete (`200 65536`):
+Each of these alone makes the response complete (`200 65536`). If this is a new PowerShell window, define `$appcmd` again first.
 
 ```powershell
-# a) App pool set to "No Managed Code"
+$appcmd = "$env:windir\System32\inetsrv\appcmd.exe"
+```
+
+**a) App pool set to "No Managed Code".** The module stays registered in `web.config`.
+
+```powershell
 & $appcmd set apppool PreSendRepro /managedRuntimeVersion:""
 & $appcmd recycle apppool PreSendRepro
+curl.exe -s -o NUL -w "%{http_code} %{size_download}`n" http://localhost:8086/
+```
 
-# b) Or, with the pool back on v4.0, change the module to subscribe to EndRequest instead of
-#    PreSendRequestContent (edit Module.cs, rebuild step 1's second command, recycle the pool)
+Restore the pool afterwards with `& $appcmd set apppool PreSendRepro /managedRuntimeVersion:v4.0`.
+
+**b) Module subscribes to `EndRequest` instead.** With the pool on `v4.0`, change `PreSendRequestContent` to `EndRequest` in `PreSendModule/Module.cs`, then rebuild the module and recycle the pool.
+
+```powershell
+& $appcmd stop apppool PreSendRepro      # releases the lock on bin\PreSendModule.dll
+dotnet build PreSendModule -c Release -o C:\inetpub\PreSendRepro\bin
+& $appcmd start apppool PreSendRepro
+curl.exe -s -o NUL -w "%{http_code} %{size_download}`n" http://localhost:8086/
 ```
 
 ## Cleanup
