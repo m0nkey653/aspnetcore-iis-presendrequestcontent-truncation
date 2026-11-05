@@ -63,10 +63,12 @@ curl.exe -s -o NUL -w "%{http_code} %{size_download}`n" http://localhost:8086/
 
 Restore the pool afterwards with `& $appcmd set apppool PreSendRepro /managedRuntimeVersion:v4.0`.
 
-**b) Module subscribes to `EndRequest` instead.** With the pool on `v4.0`, change `PreSendRequestContent` to `EndRequest` in `PreSendModule/Module.cs`, then rebuild the module and recycle the pool.
+**b) Module subscribes to `EndRequest` instead.** This needs a one-line code change, so the module is rebuilt and the pool restarted.
 
 ```powershell
+& $appcmd set apppool PreSendRepro /managedRuntimeVersion:v4.0
 & $appcmd stop apppool PreSendRepro      # releases the lock on bin\PreSendModule.dll
+# edit PreSendModule/Module.cs to subscribe to EndRequest instead of PreSendRequestContent
 dotnet build PreSendModule -c Release -o C:\inetpub\PreSendRepro\bin
 & $appcmd start apppool PreSendRepro
 curl.exe -s -o NUL -w "%{http_code} %{size_download}`n" http://localhost:8086/
